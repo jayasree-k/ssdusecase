@@ -1,2 +1,2 @@
-API_KEY = "AKIA1234567890FAKE"
+AWS_SECRET_KEY = "abcd1234superfakekey"
 
