@@ -1,23 +1,49 @@
-name: Secret Scan on PR
-
+name: Security and Code Quality Scan
 on:
   pull_request:
     branches:
       - main
-
+      - dev*
 jobs:
-  secret-scan:
+  scan-and-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install trufflehog
+        uses: actions/checkout@v4
+      # Install Trivy
+      - name: Install Trivy
         run: |
-          sudo curl -L https://github.com/trufflesecurity/trufflehog/releases/latest/download/trufflehog_$(uname -s)_$(uname -m) -o /usr/local/bin/trufflehog
-          sudo chmod +x /usr/local/bin/trufflehog
-
-      - name: Run trufflehog secret scan
+          sudo apt-get update -y
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y
+          sudo apt-get install -y trivy
+      # Run Trivy Scan (secrets + vulnerabilities)
+      - name: Run Trivy Scan
         run: |
-          trufflehog filesystem --directory . || (echo "❌ Secret scan failed!" && exit 1)
+          echo "
+ Running Trivy scan..."
+          trivy fs --scanners vuln,secret --exit-code 1 --no-progress .
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+      # Run Python Linter (will fail on errors)
+      - name: Run flake8 (Linting)
+        run: |
+          echo "
+ Running lint checks..."
+          flake8 . --select=E
+      # Run Python Tests (allow no tests, but fail on real errors)
+      - name: Run pytest
+        run: |
+          echo "
+ Running tests..."
+          pytest --maxfail=1 --disable-warnings -q || [ $? -eq 5 ]
