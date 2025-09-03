@@ -1,15 +1,18 @@
 name: Security and Code Quality Scan
+
 on:
   pull_request:
     branches:
       - main
       - dev*
+
 jobs:
   scan-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       # Install Trivy
       - name: Install Trivy
         run: |
@@ -19,31 +22,33 @@ jobs:
           echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update -y
           sudo apt-get install -y trivy
+
       # Run Trivy Scan (secrets + vulnerabilities)
       - name: Run Trivy Scan
         run: |
-          echo "
- Running Trivy scan..."
+          echo "🔍 Running Trivy scan..."
           trivy fs --scanners vuln,secret --exit-code 1 --no-progress .
+
       # Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
       # Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install flake8 pytest
+
       # Run Python Linter (will fail on errors)
       - name: Run flake8 (Linting)
         run: |
-          echo "
- Running lint checks..."
+          echo "🔎 Running lint checks..."
           flake8 . --select=E
+
       # Run Python Tests (allow no tests, but fail on real errors)
       - name: Run pytest
         run: |
-          echo "
- Running tests..."
+          echo "🧪 Running tests..."
           pytest --maxfail=1 --disable-warnings -q || [ $? -eq 5 ]
